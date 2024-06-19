@@ -1,0 +1,27 @@
+volatile uint16_t t1_done = 1;
+ISR(TIMER3_COMPA_vect)
+{
+    t1_done = 1; // Ustawienie flagi zakończenia opóźnienia
+    TIMSK3 &= ~(1 << OCIE3A); // Wyłączenie przerwania porównawczego, aby nie wywoływać go wielokrotnie
+}
+void timer3_init()
+{
+    TCCR3A = 0; // Wyzerowanie rejestru kontrolnego A
+    TCCR3B = (1 << WGM32) | (1 << CS31); // Tryb CTC i preskaler 8
+    OCR3A = 249; // Ustawienie wartości porównania dla 1 ms (F_CPU = 2000000 / 8 / 250 = 1kHz => 1ms)
+}
+void delay_ms(uint16_t ms)
+{
+    t1_done = 0;
+    uint16_t delay_count = ms;
+
+    while (delay_count > 0)
+    {
+        t1_done = 0; // Reset flagi
+        TCNT3 = 0; // Reset licznika
+        TIMSK3 |= (1 << OCIE3A); // Włączenie przerwania porównawczego
+        sei(); // Włączenie globalnych przerwań
+        while (!t1_done); // Czekanie na zakończenie opóźnienia
+        delay_count--;
+    }
+}
